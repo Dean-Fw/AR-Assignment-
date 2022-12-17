@@ -45,6 +45,7 @@ public class PlacementController : MonoBehaviour
     void Update()
     {
         // If there is no set prefab for placement, as in the selected prefab can not be loaded, do nothing 
+        // Same if there is onboard overlay is active 
         if (OnboardPanel.activeSelf)
         {
             return;
@@ -62,51 +63,61 @@ public class PlacementController : MonoBehaviour
             if (touch.phase == TouchPhase.Began) //if the touch has just began 
             {
                 bool isOverUI = EventSystem.current.IsPointerOverGameObject(touch.fingerId); //find whether the touch is over the UI
-                Debug.Log(isOverUI);
-                // Stops touches that are over the UI from affecting main screen
-                if (isOverUI) //if the touch is over the UI do nothing 
+                if (isOverUI)
                 {
-                    Debug.Log(" blocked raycast");
+                    Debug.Log("isOverUI = " + isOverUI);
                     return;
                 }
+                
+                // Stops touches that are over the UI from affecting main screen
+
                 Ray ray = Camera.main.ScreenPointToRay(touch.position); //touches not over the UI can cast a ray, create instance of a ray from the camera to the position the user touched
                 RaycastHit hit; // create an instance of a raycast hit, this is where or what the raycast touches 
-                //if a ray from a touch reaches model select it  
-                
-                if (Physics.Raycast(ray, out hit))
+
+                // as long as no touch is made over the UI a physics raycast is sent using ray and returning a hit 
+                if (Physics.Raycast(ray, out hit)) // if the ray cast hits a physical item then 
                 {
+                    //if the ray hits an object with PlacementObject componenet then that object becomes the last selected object 
+                    Debug.Log("Raycast shot");
+                    Debug.Log(hit.transform.tag);
                     lastSelectedObject = hit.transform.GetComponent<PlacementObject>();
                     if (lastSelectedObject != null)
                     {
-                        PlacementObject[] allOtherObjects = FindObjectsOfType<PlacementObject>();
-                        foreach (PlacementObject placementObject in allOtherObjects)
+                        
+                        PlacementObject[] allOtherObjects = FindObjectsOfType<PlacementObject>(); //find all other objects and add to array 
+                        foreach (PlacementObject placementObject in allOtherObjects) //loop through selecting the moost recently selected object 
                         {
                             placementObject.Selected = placementObject == lastSelectedObject;
+                            lastSelectedObject.ToggleOverlay();
+                            Debug.Log("activated text");
                         }
                     }
                 }
-                if(touch.phase == TouchPhase.Ended)
+                if (arRaycastManager.Raycast(touchPosistion, hits, UnityEngine.XR.ARSubsystems.TrackableType.PlaneWithinPolygon))
                 {
-                    lastSelectedObject.Selected = false;
+                    Debug.Log("AR Raycast shot");
+                    Pose hitpose = hits[0].pose;
+                    if (lastSelectedObject == null)
+                    {
+                        lastSelectedObject = Instantiate(placedPrefab, hitpose.position, hitpose.rotation).GetComponent<PlacementObject>();
+                    }
                 }
-                
             }
-            // if instead a ray an AR plane, create a model  
-            if (arRaycastManager.Raycast(touchPosistion, hits, UnityEngine.XR.ARSubsystems.TrackableType.Planes))
+            if (touch.phase == TouchPhase.Moved)
             {
-               
-                Pose hitpose = hits[0].pose;
-                if(lastSelectedObject == null)
+                if (arRaycastManager.Raycast(touchPosistion, hits, UnityEngine.XR.ARSubsystems.TrackableType.PlaneWithinPolygon))
                 {
-                    lastSelectedObject = Instantiate(placedPrefab, hitpose.position, hitpose.rotation).GetComponent<PlacementObject>();
-                }
-                else
-                {
-                    lastSelectedObject.transform.position = hitpose.position;
-                    lastSelectedObject.transform.rotation = hitpose.rotation;
+                    Pose hitPose = hits[0].pose;
+
+                    if (lastSelectedObject != null && lastSelectedObject.Selected)
+                    {
+                        lastSelectedObject.transform.parent.position = hitPose.position;
+                        lastSelectedObject.transform.parent.rotation = hitPose.rotation;
+                    }
+
                 }
             }
-        }   
+        }             
     }
     void ChangePrefabTo(string prefabName)
     {

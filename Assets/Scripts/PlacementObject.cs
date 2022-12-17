@@ -17,15 +17,25 @@ public class PlacementObject : MonoBehaviour
         set
         {
             IsSelected = value;
-            
+
         }
     }
+
 
     [SerializeField]
     private TextMeshPro OverlayText;
 
     [SerializeField]
-    private string OverlayTextName;
+    private string OverlayDisplayText;
+
+    public void SetOverlayText(string text)
+    {
+        if (OverlayText != null)
+        {
+            OverlayText.gameObject.SetActive(true);
+            OverlayText.text = text;
+        }
+    }
 
 
     void Awake()
@@ -34,12 +44,17 @@ public class PlacementObject : MonoBehaviour
         OverlayText = GetComponentInChildren<TextMeshPro>();
         if (OverlayText != null)
         {
+            Debug.Log("Text Found!");
             OverlayText.gameObject.SetActive(false);
         }
+
     }
-    public void ToggleOverLay()
+    public void ToggleOverlay()
     {
         OverlayText.gameObject.SetActive(IsSelected);
+
+
+
     }
-}
-    
+
+}    
